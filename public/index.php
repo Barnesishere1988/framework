@@ -2,10 +2,9 @@
 require __DIR__.'/../bootstrap.php';
 
 use FW\Http\Request;
-use FW\Routing\Router;
 use FW\Middleware\Kernel;
 
-$r = new Request();
-$m = new Kernel($r);
-$res = $m->handle();
+$req = new Request();
+$kernel = new Kernel($req);
+$res = $kernel->handle();
 echo $res;
