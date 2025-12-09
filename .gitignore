@@ -1,0 +1,4 @@
+/storage/logs/*
+/storage/sessions/*
+/config/maintenance.json
+/config/security.php
