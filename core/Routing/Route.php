@@ -7,6 +7,8 @@ class Route {
 	public $handler;
 	public array $mw = [];
 	public array $params = [];
+	public $pattern;
+	public $callback;
 
 	public function __construct($m,$u,$h) {
 		$this->method = $m;

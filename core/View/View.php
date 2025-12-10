@@ -1,62 +1,122 @@
 <?php
 namespace FW\View;
 
+use FW\Theme\Theme;
+
 class View {
-  public static string $cache = __DIR__.'/../../storage/views/compiled/';
 
-  public static function base() {
-    return \FW\Theme\Theme::viewPath();
-  }
+    private static array $sections = [];
+    private static string $extends = '';
 
-  public static function make($tpl,$vars=[]) {
-    $src = self::base().$tpl.'.php';
+    public static function base() {
+        return Theme::viewPath();
+    }
+
+    public static function make($tpl, $vars = []) {
+    self::$sections = [];
+    self::$extends = '';
+
+    $src = self::base() . $tpl . '.php';
     if (!file_exists($src)) return "View $tpl fehlt";
 
-    $dst = self::$cache.$tpl.'.php';
-
-    if (!file_exists($dst) || filemtime($dst) < filemtime($src))
-      self::compile($src,$dst);
+    // 1. CHILD TEMPLATE KOMPILIEREN
+   $compiledChild = self::compileFile($src, $vars);
 
     extract($vars, EXTR_SKIP);
 
+    // 2. CHILD AUSFÜHREN
     ob_start();
-    include $dst;
+    eval("?>".$compiledChild);
+    $childOutput = ob_get_clean();
+
+    // 3. Wenn KEIN extends, einfach Child zurückgeben
+    if (!self::$extends) {
+        return $childOutput;
+    }
+
+    // 4. LAYOUT PFAD LADEN
+    $layoutPath = self::base() . self::$extends . '.php';
+
+    if (!file_exists($layoutPath)) {
+        return "Layout " . self::$extends . " fehlt";
+    }
+
+    // 5. LAYOUT KOMPILIEREN  (ENTSCHEIDEND!)
+    $compiledLayout = self::compileFile($layoutPath);
+
+    // 6. Sections bereitstellen
+    $__sections = self::$sections;
+    $__content = $childOutput;
+
+    // Variablen wieder ins Layout scope extrahieren
+    extract($vars, EXTR_SKIP);
+
+    // 7. LAYOUT AUSFÜHREN  (MIT KOMPILIERTEM CODE!)
+    ob_start();
+    eval("?>".$compiledLayout);
     return ob_get_clean();
-  }
+}
 
-  private static function compile($src,$dst) {
-    $x = file_get_contents($src);
 
-    // {{ ... }} nur für nicht-HTML-Ausgabe
-    $x = preg_replace_callback('/\{\{\s*(.*?)\s*\}\}/',
-      fn($m)=>'<?= htmlspecialchars('.$m[1].', ENT_QUOTES) ?>', $x);
+private static function compileFile(string $path, array $vars = []): string {
+    $x = file_get_contents($path);
 
-    // @include('file')
-    $x = preg_replace(
-      '/@include\(\'(.+?)\'\)/',
-      '<?= FW\View\View::make("$1") ?>',
-      $x
+    // 1) EXTENDS (merken, Zeile entfernen)
+    if (preg_match('/@extends\(\'(.+?)\'\)/', $x, $m)) {
+        self::$extends = $m[1];
+        $x = str_replace($m[0], '', $x);
+    }
+
+    // 2) VARIABLES zuerst ersetzen (WICHTIG!)
+    $x = preg_replace('/\{\{\s*(.+?)\s*\}\}/',
+        '<?= htmlspecialchars($1, ENT_QUOTES) ?>',
+        $x
     );
 
-    // @if()
-    $x = preg_replace('/@if\s*\((.*?)\)/','<?php if($1): ?>',$x);
+    // 3) SECTIONS extrahieren
+    preg_match_all('/@section\(\'(.+?)\'\)([\s\S]*?)@endsection/',
+        $x, $matches, PREG_SET_ORDER);
 
-    // @elseif()
-    $x = preg_replace('/@elseif\s*\((.*?)\)/','<?php elseif($1): ?>',$x);
+    foreach ($matches as $m) {
+        self::$sections[$m[1]] = self::evaluateSection($m[2], $vars);
+        $x = str_replace($m[0], '', $x);
+    }
 
-    // @else
-    $x = preg_replace('/@else/','<?php else: ?>',$x);
+    // 4) YIELD ersetzen
+    $x = preg_replace('/@yield\(\'(.+?)\'\)/',
+        '<?= $__sections["$1"] ?? "" ?>',
+        $x
+    );
 
-    // @endif
-    $x = preg_replace('/@endif/','<?php endif; ?>',$x);
+    // 5) INCLUDE
+    $x = preg_replace('/@include\(\'(.+?)\'\)/',
+        '<?= FW\\View\\View::make("$1") ?>',
+        $x
+    );
 
-    // @foreach()
-    $x = preg_replace('/@foreach\s*\((.*?)\)/',
-      '<?php foreach($1): ?>',$x);
+    // 6) CONTROL STRUCTURES
+    $patterns = [
+        '/@if\s*\((.+?)\)/'       => '<?php if ($1): ?>',
+        '/@elseif\s*\((.+?)\)/'   => '<?php elseif ($1): ?>',
+        '/@else/'                 => '<?php else: ?>',
+        '/@endif/'                => '<?php endif; ?>',
+        '/@foreach\s*\((.+?)\)/'  => '<?php foreach ($1): ?>',
+        '/@endforeach/'           => '<?php endforeach; ?>'
+    ];
 
-    // @endforeach
-    $x = preg_replace('/@endforeach/','<?php endforeach; ?>',$x);
+    foreach ($patterns as $p => $r) {
+        $x = preg_replace($p, $r, $x);
+    }
 
-    file_put_contents($dst, $x);
-  }
+    return $x;
+}
+
+private static function evaluateSection($phpCode, $vars) {
+    extract($vars, EXTR_SKIP);
+    ob_start();
+    eval("?>".$phpCode);
+    return ob_get_clean();
+}
+
+
 }

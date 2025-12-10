@@ -30,9 +30,25 @@ class Kernel {
 			return view('themetest', ['name'=>'Felix']);
 		});
 
+		
+		$r->get('/layout', function() {
+				return view('home', ['name' => 'Felix']);
+		});
+
+		if ($this->req->uri == '/scan') {
+    	return \FW\Debug\DebugScanner::run();
+		}
+
+
 		$route = $r->match($this->req);
 		if (!$route) return '404';
 
-		return ControllerResolver::run($route,$this->req);
+		// Callback ausführen
+		if ($route->callback instanceof \Closure) {
+				return ($route->callback)();
+		}
+
+		// Sonst Controller
+		return ControllerResolver::run($route, $this->req);
 	}
 }

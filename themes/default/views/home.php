@@ -1,3 +1,6 @@
-<h1>Hallo {{ $name }}</h1>
+@extends('layout')
 
-<p>Dies ist ein Template-Test.</p>
+@section('content')
+<h1>Hallo {{ $name }}</h1>
+<p>Dies ist ein Layout-Test.</p>
+@endsection
