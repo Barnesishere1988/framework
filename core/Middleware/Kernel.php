@@ -26,6 +26,10 @@ class Kernel {
 			return view('home', ['name'=>'Felix']);
 		});
 
+		$r->get('/theme', function() {
+			return view('themetest', ['name'=>'Felix']);
+		});
+
 		$route = $r->match($this->req);
 		if (!$route) return '404';
 

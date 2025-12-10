@@ -2,11 +2,14 @@
 namespace FW\View;
 
 class View {
-  public static string $base = __DIR__.'/../../themes/default/views/';
   public static string $cache = __DIR__.'/../../storage/views/compiled/';
 
+  public static function base() {
+    return \FW\Theme\Theme::viewPath();
+  }
+
   public static function make($tpl,$vars=[]) {
-    $src = self::$base.$tpl.'.php';
+    $src = self::base().$tpl.'.php';
     if (!file_exists($src)) return "View $tpl fehlt";
 
     $dst = self::$cache.$tpl.'.php';
