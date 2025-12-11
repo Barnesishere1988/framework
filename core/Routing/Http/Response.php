@@ -7,11 +7,10 @@ class Response
     public array $headers = [];
     public string $body = '';
 
-    public function __construct(string $body = '', int $status = 200, array $headers = [])
+    public function __construct(string $body = '', int $status = 200)
     {
         $this->body = $body;
         $this->status = $status;
-        $this->headers = $headers;
     }
 
     public function header(string $name, string $value): self
@@ -24,8 +23,8 @@ class Response
     {
         http_response_code($this->status);
 
-        foreach ($this->headers as $name => $value) {
-            header("$name: $value");
+        foreach ($this->headers as $k => $v) {
+            header("$k: $v");
         }
 
         echo $this->body;

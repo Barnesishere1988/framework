@@ -11,3 +11,11 @@ use FW\Theme\AssetPublisher;
 
 $theme = Config::get('theme')['active'];
 AssetPublisher::publish($theme);
+
+use FW\Plugins\PluginManager;
+
+// Plugins automatisch laden
+foreach (glob(__DIR__ . '/plugins/*', GLOB_ONLYDIR) as $pluginDir) {
+	$pluginName = basename($pluginDir);
+	PluginManager::register($pluginName, $pluginDir);
+}

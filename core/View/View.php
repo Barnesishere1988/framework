@@ -16,8 +16,35 @@ class View {
     self::$sections = [];
     self::$extends = '';
 
-    $src = self::base() . $tpl . '.php';
-    if (!file_exists($src)) return "View $tpl fehlt";
+    // 1. Pfad im aktiven Theme berechnen
+    $tpl = str_replace('.', '/', $tpl);
+
+    $src = null;
+
+    foreach (\FW\Plugins\PluginManager::viewPaths() as $pluginViewPath) {
+        $pluginFile = $pluginViewPath . $tpl . '.php';
+        if (file_exists($pluginFile)) {
+            $src = $pluginFile;
+            break;
+        }
+    }
+
+    if (!isset($src)) {
+        $src = self::base() . $tpl . '.php';
+    }
+
+    // 2. Wenn View nicht existiert -> Fallback auf default Theme
+    if (!file_exists($src)) {
+        $fallback = __DIR__ . '/../../themes/default/views/' . $tpl . '.php';
+
+        if (file_exists($fallback)) {
+            $src = $fallback;
+        }
+    }
+
+    if ($src === null) {
+        return "View '$tpl' fehlt";
+    }
 
     // 1. CHILD TEMPLATE KOMPILIEREN
    $compiledChild = self::compileFile($src, $vars);
@@ -38,11 +65,18 @@ class View {
     $layoutPath = self::base() . self::$extends . '.php';
 
     if (!file_exists($layoutPath)) {
-        return "Layout " . self::$extends . " fehlt";
+        // Fallback auf default Theme
+        $fallback = __DIR__ . '/../../themes/default/views/' . self::$extends . '.php';
+
+        if (file_exists($fallback)) {
+            $layoutPath = $fallback;
+        } else {
+            return "Layout " . self::$extends . " fehlt";
+        }
     }
 
     // 5. LAYOUT KOMPILIEREN  (ENTSCHEIDEND!)
-    $compiledLayout = self::compileFile($layoutPath);
+    $compiledLayout = self::compileFile($layoutPath, $vars);
 
     // 6. Sections bereitstellen
     $__sections = self::$sections;

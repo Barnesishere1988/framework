@@ -1,0 +1,10 @@
+{
+	"name": "Default Theme",
+	"version": "1.0.0",
+	"author": "Barnesishere",
+	"description": "Standard Theme des Frameworks",
+	"supports": {
+		"dark_mode": true,
+		"light_mode": true
+	}
+}

@@ -17,7 +17,7 @@ use FW\Routing\Router;
 function redirect(?string $to = null)
 {
 	if ($to !== null) {
-		return new RedirectResponse($to);
+    return new \FW\Routing\Http\RedirectResponse($to);
 	}
 
 	return new class {
