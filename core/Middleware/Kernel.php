@@ -2,53 +2,64 @@
 namespace FW\Middleware;
 
 use FW\Routing\Router;
-use FW\Routing\ControllerResolver;
+use FW\Routing\Controller\ControllerResolver;
+use FW\Routing\Pipeline\MiddlewarePipeline;
+use FW\Routing\Http\Response;
+use FW\Routing\Http\Request;
 
-class Kernel {
-	private $req;
+class Kernel
+{
+    private Request $req;
 
-	public function __construct($r) {
-		$this->req = $r;
-	}
+    public function __construct(Request $req)
+    {
+        $this->req = $req;
+    }
 
-	public function handle() {
-		$r = new Router();
+    public function handle(): void
+    {
+        $router = new Router();
 
-		// einfache Seiten
-		$r->get('/', fn()=> 'Startseite');
-		$r->get('/test', 'DemoController@index');
+        // Routen definieren
+        $router->get('/', fn() => 'Startseite');
+        $router->get('/test', 'DemoController@index');
+        $router->get('/hello/{name:str}', 'DemoController@hello');
+        $router->get('/user/{id:int}', 'UserController@show');
 
-		// Parameter-Routing
-		$r->get('/hello/{name}', 'DemoController@hello');
-		$r->get('/user/{id}', 'UserController@show');
+        $router->get('/viewtest', fn() => view('home', ['name' => 'Felix']));
+        $router->get('/layout', fn() => view('home', ['name' => 'Felix']));
 
-		$r->get('/viewtest', function() {
-			return view('home', ['name'=>'Felix']);
-		});
+        // MATCHING
+        $match = $router->match($this->req);
 
-		$r->get('/theme', function() {
-			return view('themetest', ['name'=>'Felix']);
-		});
+        // 404
+        if (isset($match['error']) && $match['error'] === 404) {
+            $res = new Response(view('errors.404'), 404);
+            $res->send();
+            return;
+        }
 
-		
-		$r->get('/layout', function() {
-				return view('home', ['name' => 'Felix']);
-		});
+        // 405
+        if (isset($match['error']) && $match['error'] === 405) {
+            $res = new Response(view('errors.405'), 405);
+            $res->send();
+            return;
+        }
 
-		if ($this->req->uri == '/scan') {
-    	return \FW\Debug\DebugScanner::run();
-		}
+        $route  = $match['route'];      // Route-Objekt
+        $params = $match['params'];     // Parameter-Werte
 
+        // MIDDLEWARES → Pipeline
+        $middlewares = $route->middlewares;
 
-		$route = $r->match($this->req);
-		if (!$route) return '404';
+        $response = MiddlewarePipeline::run(
+            $middlewares,
+            $this->req,
+            function() use ($route, $params) {
+                return ControllerResolver::run($route, $this->req, $params);
+            }
+        );
 
-		// Callback ausführen
-		if ($route->callback instanceof \Closure) {
-				return ($route->callback)();
-		}
-
-		// Sonst Controller
-		return ControllerResolver::run($route, $this->req);
-	}
+        $response->send();
+    }
 }
