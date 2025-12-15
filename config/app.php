@@ -1,6 +1,8 @@
 <?php return [
 	'debug' => false,
-	'env' => 'production',
+	'app' => [
+		'env' => 'dev'
+	],
 	'name' => 'UltraCMS',
 	'timezone' => 'Europe/Vienna'
 ];

@@ -42,6 +42,9 @@ class Kernel
         $router->get('/test404', function() {
             return view('errors/404');
         });
+        $router->get('/errtest', function() {
+            throw new \RuntimeException("Testfehler!");
+        });
         $router->get('/themeinfo', function() {
             return '<pre>' . print_r(\FW\Theme\Theme::manifest(), true) . '</pre>';
         });
