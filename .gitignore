@@ -2,3 +2,4 @@
 /storage/sessions/*
 /config/maintenance.json
 /config/security.php
+/storage/maintenance.flag

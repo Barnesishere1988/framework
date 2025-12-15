@@ -13,6 +13,13 @@ $theme = Config::get('theme')['active'];
 AssetPublisher::publish($theme);
 
 use FW\Plugins\PluginManager;
+use FW\Routing\Pipeline\MiddlewarePipeline;
+use FW\Middleware\MaintenanceMiddleware;
+
+MiddlewarePipeline::register(
+	'maintenance',
+	MaintenanceMiddleware::class
+);
 
 // Plugins automatisch laden
 foreach (glob(__DIR__ . '/plugins/*', GLOB_ONLYDIR) as $pluginDir) {
