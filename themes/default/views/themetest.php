@@ -1,3 +1,4 @@
+@extends('notfound')
 <h1>Aktives Theme: Default</h1>
 <p>Hallo {{ $name }}</p>
 

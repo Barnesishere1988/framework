@@ -37,7 +37,12 @@ class Kernel
             return redirect('/_maintenance');
         });
 
-
+        /*$router->get('/', function () {
+            return view('does.not.exist');
+        });*/
+        $router->get('/_test/layout-error', function () {
+            return view('test_layout_error');
+        });
         // Routen definieren
         $router->get('/', fn() => 'Startseite');
         $router->get('/test', 'DemoController@index');

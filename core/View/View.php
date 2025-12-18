@@ -2,22 +2,40 @@
 namespace FW\View;
 
 use FW\Theme\Theme;
+use FW\View\ViewException;
 
 class View {
 
     private static array $sections = [];
     private static string $extends = '';
+    private static array $extendStack = [];
 
     public static function base() {
         return Theme::viewPath();
     }
 
+    private static function normalizeName(string $tpl): string
+    {
+        // Punkte zu Slashes
+        $tpl = str_replace('.', '/', $tpl);
+
+        // Mehrfache Slashes entfernen
+        $tpl = preg_replace('#/+#', '/', $tpl);
+
+        // Keine relativen Pfade erlauben
+        $tpl = trim($tpl, '/');
+        $tpl = str_replace(['../', './'], '', $tpl);
+
+        return $tpl;
+    }
+
     public static function make($tpl, $vars = []) {
     self::$sections = [];
     self::$extends = '';
+    self::$extendStack = [];
 
     // 1. Pfad im aktiven Theme berechnen
-    $tpl = str_replace('.', '/', $tpl);
+    $tpl = self::normalizeName($tpl);
 
     $src = null;
 
@@ -43,7 +61,7 @@ class View {
     }
 
     if ($src === null) {
-        return "View '$tpl' fehlt";
+        throw new ViewException("View '$tpl' nicht gefunden");
     }
 
     // 1. CHILD TEMPLATE KOMPILIEREN
@@ -71,7 +89,7 @@ class View {
         if (file_exists($fallback)) {
             $layoutPath = $fallback;
         } else {
-            return "Layout " . self::$extends . " fehlt";
+            throw new ViewException("Layout '" . self::$extends . "' nicht gefunden");
         }
     }
 
@@ -93,11 +111,25 @@ class View {
 
 
 private static function compileFile(string $path, array $vars = []): string {
-    $x = file_get_contents($path);
+    $x = @file_get_contents($path);
+    if ($x === false) {
+        throw new ViewException("View-Datei konnte nicht gelesen werden: $path");
+    }
 
     // 1) EXTENDS (merken, Zeile entfernen)
     if (preg_match('/@extends\(\'(.+?)\'\)/', $x, $m)) {
-        self::$extends = $m[1];
+        $parent = self::normalizeName($m[1]);
+
+        // Mehrfach-Extends verhindern
+        if (in_array($parent, self::$extendStack, true)) {
+            throw new \RuntimeException(
+                "Mehrfach-Extends erkannt: " . implode(' -> ', self::$extendStack) . " -> $parent"
+            );
+        }
+
+        self::$extendStack[] = $parent;
+        self::$extends = $parent;
+
         $x = str_replace($m[0], '', $x);
     }
 
