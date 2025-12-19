@@ -1,4 +1,5 @@
 <?php
+
 namespace FW\Middleware;
 
 use FW\Routing\Router;
@@ -6,193 +7,171 @@ use FW\Routing\Controller\ControllerResolver;
 use FW\Routing\Pipeline\MiddlewarePipeline;
 use FW\Routing\Http\Response;
 use FW\Routing\Http\Request;
-use FW\Debug\LogViewer;
 use FW\Config\Config;
+use FW\Debug\LogViewer;
 use FW\Maintenance\Maintenance;
-use FW\Auth\UserStub;
 
 class Kernel
 {
-    private Request $req;
+	private Request $req;
 
-    public function __construct(Request $req)
-    {
-        $this->req = $req;
-    }
+	public function __construct(Request $req)
+	{
+		$this->req = $req;
+	}
 
-    public function handle(): void
-    {
-        $router = new Router();
+	public function handle(): void
+	{
+		$router = new Router();
 
-        $path = $this->req->uri;
+		/*
+		|--------------------------------------------------------------------------
+		| Maintenance UI & Control (immer erreichbar)
+		|--------------------------------------------------------------------------
+		*/
+		$router->get(
+			'/_maintenance',
+			fn() =>
+			view('debug/maintenance_toggle')
+		);
 
-        $preMiddlewareSkip = [
-            '/_maintenance',
-            '/_maintenance/bypass',
-        ];
+		$router->get('/_maintenance/on', function () {
+			Maintenance::enable();
+			return redirect('/_maintenance');
+		});
 
-        $skipPreMiddleware = false;
+		$router->get('/_maintenance/off', function () {
+			Maintenance::disable();
+			return redirect('/_maintenance');
+		});
 
-        foreach ($preMiddlewareSkip as $skip) {
-            if (str_starts_with($path, $skip)) {
-                $skipPreMiddleware = true;
-                break;
-            }
-        }
+		$router->get('/_maintenance/bypass/{key}', function (string $key) {
+			if ($key === 'letmein') {
+				$_SESSION['maintenance_bypass'] = true;
+				return redirect('/');
+			}
+			return new Response('Ungültiger Schlüssel', 403);
+		});
 
-        if (!$skipPreMiddleware) {
-            $preResponse = MiddlewarePipeline::run(
-                ['maintenance'],
-                $this->req,
-                fn () => new Response('', 200)
-            );
+		/*
+		|--------------------------------------------------------------------------
+		| Dev-Only Test & Debug Routes
+		|--------------------------------------------------------------------------
+		*/
+		if ((Config::get('app')['env'] ?? 'prod') === 'dev') {
 
-            if ($preResponse->getStatusCode() !== 200) {
-                $preResponse->send();
-                return;
-            }
-        }
-        $router->get('/_test/plain', fn() => 'OK');
+			$router->get(
+				'/_test/layout-error',
+				fn() =>
+				view('test_layout_error')
+			);
 
-        $router->get('/_test/role', fn() => 'OK')
-       ->middleware('role:admin');
-        $router->get('/_test/unknown-mw', fn () => 'OK')
-       ->middleware('doesnotexist');
-       $router->get('/_test/mw-order', fn () => 'OK')
-       ->middleware('role:admin', 'auth');
-        $router->get('/_test/secure', fn() => 'OK')
-       ->middleware('auth', 'role:admin');
+			$router->get('/_debug/logs', function () {
+				$logs = LogViewer::read(300);
+				return view('debug/logs', ['logs' => $logs]);
+			});
+		}
 
+		/*
+		|--------------------------------------------------------------------------
+		| Öffentliche & App-Routen
+		|--------------------------------------------------------------------------
+		*/
+		$router->get('/', fn() => 'Startseite');
 
+		$router->get('/test', 'DemoController@index');
+		$router->get('/hello/{name:str}', 'DemoController@hello');
+		$router->get('/user/{id:int}', 'UserController@show');
 
-        // UI anzeigen
-        $router->get('/_maintenance', function () {
-            return view('debug/maintenance_toggle');
-        });
-        $router->get('/_maintenance/on', function () {
-            Maintenance::enable();
-            return redirect('/_maintenance');
-        });
+		$router->get(
+			'/viewtest',
+			fn() =>
+			view('home', ['name' => 'Felix'])
+		);
 
-        $router->get('/_maintenance/off', function () {
-            Maintenance::disable();
-            return redirect('/_maintenance');
-        });
+		$router->get(
+			'/layout',
+			fn() =>
+			view('home', ['name' => 'Felix'])
+		);
 
-        /*$router->get('/', function () {
-            return view('does.not.exist');
-        });*/
-        $router->get('/_test/layout-error', function () {
-            return view('test_layout_error');
-        });
-        // Routen definieren
-        $router->get('/', fn() => 'Startseite');
-        $router->get('/test', fn () => 'TEST OK');
+		/*
+		|--------------------------------------------------------------------------
+		| Theme Handling
+		|--------------------------------------------------------------------------
+		*/
+		$router->get('/themes/{name:str}', function (string $name) {
+			if (\FW\Theme\Theme::set($name)) {
+				return redirect('/')
+					->header('X-Theme-Change', 'OK');
+			}
+			return new Response("Theme '$name' existiert nicht.", 404);
+		});
 
-        $router->get('/hello/{name:str}', 'DemoController@hello');
-        $router->get('/user/{id:int}', 'UserController@show');
+		$router->get('/theme/clear', function () {
+			\FW\Theme\Theme::clearPreview();
+			return redirect('/')
+				->header('X-Theme-Change', 'Cleared');
+		});
 
-        $router->get('/viewtest', fn() => view('home', ['name' => 'Felix']));
+		/*
+		|--------------------------------------------------------------------------
+		| Error Test (bewusst)
+		|--------------------------------------------------------------------------
+		*/
+		$router->get('/errtest', function () {
+			throw new \RuntimeException('Testfehler!');
+		});
 
+		/*
+		|--------------------------------------------------------------------------
+		| Routing Match
+		|--------------------------------------------------------------------------
+		*/
+		$match = $router->match($this->req);
 
-        $router->get('/layout', fn() => view('home', ['name' => 'Felix']));
+		if (isset($match['error'])) {
 
-        $router->get('/themes/{name:str}', function($name) {
-            if (\FW\Theme\Theme::set($name)) {
-                return redirect('/')->header('X-Theme-Change', 'OK');
-            }
-            return "Theme '$name' existiert nicht.";
-        });
-        $router->get('/t1', fn()=> 'ok');
+			if ($match['error'] === 404) {
+				(new Response(
+					view('errors/404_styled'),
+					404
+				))->send();
+				return;
+			}
 
-        $router->get('/test404', function() {
-            return view('errors/404');
-        });
-        $router->get('/errtest', function() {
-            throw new \RuntimeException("Testfehler!");
-        });
-        $router->get('/themeinfo', function() {
-            return '<pre>' . print_r(\FW\Theme\Theme::manifest(), true) . '</pre>';
-        });
+			if ($match['error'] === 405) {
+				(new Response(
+					view('errors/405_styled'),
+					405
+				))->send();
+				return;
+			}
+		}
 
-        // THEME SWITCH ROUTES
-        $router->get('/theme/switch/{name:str}', function($name) {
-            if (\FW\Theme\Theme::set($name)) {
-                return redirect('/')
-                    ->header('X-Theme-Change', 'OK');
-            }
+		$route  = $match['route'];
+		$params = $match['params'];
 
-        });
+		/*
+		|--------------------------------------------------------------------------
+		| Middleware Pipeline (Maintenance IMMER zuerst)
+		|--------------------------------------------------------------------------
+		*/
+		$middlewares = $route->middlewares ?? [];
+		array_unshift($middlewares, 'maintenance');
 
-        $router->get('/theme/clear', function() {
-            \FW\Theme\Theme::clearPreview();
-            return redirect('/')
-                ->header('X-Theme-Change', 'Cleared');
-        });
+		$response = MiddlewarePipeline::run(
+			$middlewares,
+			$this->req,
+			function () use ($route, $params) {
+				return ControllerResolver::run(
+					$route,
+					$this->req,
+					$params
+				);
+			}
+		);
 
-        $router->get('/_debug/logs', function () {
-            $env = Config::get('app')['env'] ?? 'prod';
-
-            if ($env !== 'dev') {
-                http_response_code(403);
-                return 'Zugriff verweigert';
-            }
-
-            $logs = LogViewer::read(300);
-            return view('debug/logs', ['logs' => $logs]);
-        });
-
-        $router->get('/_maintenance/bypass/{key}', function($key) {
-            if ($key === 'letmein') {
-                $_SESSION['maintenance_bypass'] = true;
-                return redirect('/');
-            }
-
-            return 'Ungültiger Schlüssel';
-        });
-
-        $router->get('/_test/login_admin', function () {
-            $_SESSION['__fw_user_stub_roles'] = ['admin'];
-            return 'admin gesetzt';
-        });
-
-        $router->get('/_test/logout', function () {
-            unset($_SESSION['__fw_user_stub_roles']);
-            return 'logout';
-        });
-
-        // MATCHING
-        $match = $router->match($this->req);
-
-        // 404
-        if (isset($match['error']) && $match['error'] === 404) {
-            $res = new Response(view('errors/404_styled'), 404);
-            $res->send();
-            return;
-        }
-
-        // 405
-        if (isset($match['error']) && $match['error'] === 405) {
-            $res = new Response(view('errors/405_styled'), 405);
-            $res->send();
-            return;
-        }
-
-        $route  = $match['route'];      // Route-Objekt
-        $params = $match['params'];     // Parameter-Werte
-
-        // MIDDLEWARES → Pipeline
-        
-        $middlewares = $route->middlewares;
-
-        $response = MiddlewarePipeline::run(
-            $middlewares,
-            $this->req,
-            function() use ($route, $params) {
-                return ControllerResolver::run($route, $this->req, $params);
-            }
-        );
-
-        $response->send();
-    }
+		$response->send();
+	}
 }
