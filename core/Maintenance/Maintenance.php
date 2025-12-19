@@ -1,6 +1,8 @@
 <?php
 namespace FW\Maintenance;
 
+use FW\Routing\Http\Request;
+
 class Maintenance
 {
 	public static function flagPath(): string
@@ -23,5 +25,11 @@ class Maintenance
 		if (file_exists(self::flagPath())) {
 			unlink(self::flagPath());
 		}
+	}
+
+	public static function isBypassed(Request $req): bool
+	{
+		return isset($_SESSION['maintenance_bypass']) &&
+					$_SESSION['maintenance_bypass'] === true;
 	}
 }

@@ -15,11 +15,15 @@ AssetPublisher::publish($theme);
 use FW\Plugins\PluginManager;
 use FW\Routing\Pipeline\MiddlewarePipeline;
 use FW\Middleware\MaintenanceMiddleware;
+use FW\Middleware\RoleMiddleware;
+use FW\Middleware\AuthMiddleware;
 
 MiddlewarePipeline::register(
 	'maintenance',
 	MaintenanceMiddleware::class
 );
+MiddlewarePipeline::register('role', RoleMiddleware::class);
+MiddlewarePipeline::register('auth', AuthMiddleware::class);
 
 // Plugins automatisch laden
 foreach (glob(__DIR__ . '/plugins/*', GLOB_ONLYDIR) as $pluginDir) {

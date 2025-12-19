@@ -20,12 +20,15 @@ class MiddlewarePipeline
         $handler = $next;
 
         foreach ($pipeline as $mw) {
-            if (!isset(self::$registry[$mw])) {
-                return new Response("Middleware '$mw' nicht registriert", 500);
+            // Name und Parameter trennen
+            [$name, $param] = array_pad(explode(':', $mw, 2), 2, null);
+
+            if (!isset(self::$registry[$name])) {
+                return new Response("Middleware '$name' nicht registriert", 500);
             }
 
-            $class = self::$registry[$mw];
-            $instance = new $class();
+            $class = self::$registry[$name];
+            $instance = new $class($param);
 
             $prev = $handler;
 

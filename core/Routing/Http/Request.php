@@ -1,6 +1,8 @@
 <?php
 namespace FW\Routing\Http;
 
+use FW\Auth\UserStub;
+
 class Request
 {
 	public string $method;
@@ -53,5 +55,16 @@ class Request
 	public function json(bool $assoc = true): mixed
 	{
 		return json_decode($this->body, $assoc);
+	}
+
+	public function user(): ?UserStub
+	{
+		// Phase 4: Stub aus Session (oder Default)
+		if (!isset($_SESSION['__fw_user_stub_roles'])) {
+			return null;
+		}
+
+		// Default: eingeloggt ohne Rollen (oder null, wenn du auth strikt willst)
+		return new UserStub($_SESSION['__fw_user_stub_roles']);
 	}
 }

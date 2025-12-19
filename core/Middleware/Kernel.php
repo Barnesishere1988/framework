@@ -9,6 +9,7 @@ use FW\Routing\Http\Request;
 use FW\Debug\LogViewer;
 use FW\Config\Config;
 use FW\Maintenance\Maintenance;
+use FW\Auth\UserStub;
 
 class Kernel
 {
@@ -22,6 +23,47 @@ class Kernel
     public function handle(): void
     {
         $router = new Router();
+
+        $path = $this->req->uri;
+
+        $preMiddlewareSkip = [
+            '/_maintenance',
+            '/_maintenance/bypass',
+        ];
+
+        $skipPreMiddleware = false;
+
+        foreach ($preMiddlewareSkip as $skip) {
+            if (str_starts_with($path, $skip)) {
+                $skipPreMiddleware = true;
+                break;
+            }
+        }
+
+        if (!$skipPreMiddleware) {
+            $preResponse = MiddlewarePipeline::run(
+                ['maintenance'],
+                $this->req,
+                fn () => new Response('', 200)
+            );
+
+            if ($preResponse->getStatusCode() !== 200) {
+                $preResponse->send();
+                return;
+            }
+        }
+        $router->get('/_test/plain', fn() => 'OK');
+
+        $router->get('/_test/role', fn() => 'OK')
+       ->middleware('role:admin');
+        $router->get('/_test/unknown-mw', fn () => 'OK')
+       ->middleware('doesnotexist');
+       $router->get('/_test/mw-order', fn () => 'OK')
+       ->middleware('role:admin', 'auth');
+        $router->get('/_test/secure', fn() => 'OK')
+       ->middleware('auth', 'role:admin');
+
+
 
         // UI anzeigen
         $router->get('/_maintenance', function () {
@@ -45,7 +87,8 @@ class Kernel
         });
         // Routen definieren
         $router->get('/', fn() => 'Startseite');
-        $router->get('/test', 'DemoController@index');
+        $router->get('/test', fn () => 'TEST OK');
+
         $router->get('/hello/{name:str}', 'DemoController@hello');
         $router->get('/user/{id:int}', 'UserController@show');
 
@@ -108,6 +151,16 @@ class Kernel
             return 'Ungültiger Schlüssel';
         });
 
+        $router->get('/_test/login_admin', function () {
+            $_SESSION['__fw_user_stub_roles'] = ['admin'];
+            return 'admin gesetzt';
+        });
+
+        $router->get('/_test/logout', function () {
+            unset($_SESSION['__fw_user_stub_roles']);
+            return 'logout';
+        });
+
         // MATCHING
         $match = $router->match($this->req);
 
@@ -131,7 +184,6 @@ class Kernel
         // MIDDLEWARES → Pipeline
         
         $middlewares = $route->middlewares;
-        array_unshift($middlewares, 'maintenance');
 
         $response = MiddlewarePipeline::run(
             $middlewares,
