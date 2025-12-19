@@ -1,7 +1,7 @@
 <?php return [
 	'debug' => false,
 	'app' => [
-		'env' => 'dev'
+		'env' => 'dev', // dev | prod
 	],
 	'name' => 'UltraCMS',
 	'timezone' => 'Europe/Vienna'

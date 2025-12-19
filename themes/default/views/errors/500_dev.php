@@ -1,7 +1,9 @@
-<h1>500 - Internat Error (DEV)</h1>
+@extends('layout')
 
-<p><strong><?=  htmlspecialchars($error->getMessage(), ENT_QUOTES) ?></strong></p>
+@section('content')
+<h1>500 - Fehler (DEV)</h1>
 
-<pre style="white-space: pre-wrap; background: #111; color: #eee; padding: 10px;">
-	<?= htmlspecialchars($error->getTraceAsString(), ENT_QUOTES) ?>
-</pre>
+<p><strong><?= htmlspecialchars($error->getMessage(), ENT_QUOTES) ?></strong></p>
+
+<pre><?= htmlspecialchars($error->getTraceAsString(), ENT_QUOTES) ?></pre>
+@endsection

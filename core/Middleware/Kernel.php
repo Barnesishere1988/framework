@@ -10,6 +10,7 @@ use FW\Routing\Http\Request;
 use FW\Config\Config;
 use FW\Debug\LogViewer;
 use FW\Maintenance\Maintenance;
+use RuntimeException;
 
 class Kernel
 {
@@ -70,7 +71,15 @@ class Kernel
 				$logs = LogViewer::read(300);
 				return view('debug/logs', ['logs' => $logs]);
 			});
+
+			$router->get('/_test/error', function () {
+				throw new RuntimeException('DEV TEST ERROR');
+			});
 		}
+
+		$router->get('/_test/warning', function () {
+			echo $undefinedVariable;
+		});
 
 		/*
 		|--------------------------------------------------------------------------
