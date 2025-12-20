@@ -1,4 +1,5 @@
 <?php
+
 namespace FW\Routing\Http;
 
 use FW\Auth\UserStub;
@@ -66,5 +67,14 @@ class Request
 
 		// Default: eingeloggt ohne Rollen (oder null, wenn du auth strikt willst)
 		return new UserStub($_SESSION['__fw_user_stub_roles']);
+	}
+
+	public function wantsJson(): bool
+	{
+		$accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+		$xhr		= $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+
+		return str_contains($accept, 'application/json')
+			|| $xhr === 'XMLHttpRequest';
 	}
 }

@@ -19,16 +19,37 @@ use FW\Middleware\Kernel;
 
 set_exception_handler(function (Throwable $e) {
 	Logger::error($e);
-
 	http_response_code(500);
 
 	$env = Config::get('app')['env'] ?? 'prod';
+	$req = new FW\Routing\Http\Request();
 
+	if ($req->wantsJson()) {
+		header('Content-Type: application/json; charset=utf-8');
+
+		if ($env === 'dev') {
+			echo json_encode([
+				'error'		=> true,
+				'message' => $e->getMessage(),
+				'trace'		=> $e->getTrace(),
+			], JSON_PRETTY_PRINT);
+		} else {
+			echo json_encode([
+				'error'		=> true,
+				'message'	=> 'Internal Server Error',
+			]);
+		}
+
+		exit;
+	}
+
+	// HTML-Fallback
 	if ($env === 'dev') {
 		echo view('errors/500_dev', ['error' => $e]);
 	} else {
 		echo view('errors/500');
 	}
+
 	exit;;
 });
 
