@@ -10,7 +10,7 @@ use FW\Routing\Http\Request;
 use FW\Config\Config;
 use FW\Debug\LogViewer;
 use FW\Maintenance\Maintenance;
-use RuntimeException;
+use FW\Controller\ErrorController;
 
 class Kernel
 {
@@ -23,13 +23,47 @@ class Kernel
 
 	public function handle(): void
 	{
+		/*
+        |--------------------------------------------------------------------------
+        | PRE-MAINTENANCE CHECK (vor Routing!)
+        |--------------------------------------------------------------------------
+        */
+		$path = $this->req->uri ?? '';
+
+		$maintenanceSkip = [
+			'/_maintenance',
+			'/_maintenance/on',
+			'/_maintenance/off',
+			'/_maintenance/bypass',
+		];
+
+		$skipMaintenance = false;
+		foreach ($maintenanceSkip as $skip) {
+			if (str_starts_with($path, $skip)) {
+				$skipMaintenance = true;
+				break;
+			}
+		}
+
+		if (!$skipMaintenance && Maintenance::isActive()) {
+			if (empty($_SESSION['maintenance_bypass'])) {
+				ErrorController::error503()->send();
+				return;
+			}
+		}
+
+		/*
+        |--------------------------------------------------------------------------
+        | Router Setup
+        |--------------------------------------------------------------------------
+        */
 		$router = new Router();
 
 		/*
-		|--------------------------------------------------------------------------
-		| Maintenance UI & Control (immer erreichbar)
-		|--------------------------------------------------------------------------
-		*/
+        |--------------------------------------------------------------------------
+        | Maintenance UI & Control (immer erreichbar)
+        |--------------------------------------------------------------------------
+        */
 		$router->get(
 			'/_maintenance',
 			fn() =>
@@ -55,37 +89,29 @@ class Kernel
 		});
 
 		/*
-		|--------------------------------------------------------------------------
-		| Dev-Only Test & Debug Routes
-		|--------------------------------------------------------------------------
-		*/
+        |--------------------------------------------------------------------------
+        | DEV-ONLY Debug & Test Routes
+        |--------------------------------------------------------------------------
+        */
 		if ((Config::get('app')['env'] ?? 'prod') === 'dev') {
-
-			$router->get(
-				'/_test/layout-error',
-				fn() =>
-				view('test_layout_error')
-			);
 
 			$router->get('/_debug/logs', function () {
 				$logs = LogViewer::read(300);
 				return view('debug/logs', ['logs' => $logs]);
 			});
 
-			$router->get('/_test/error', function () {
-				throw new RuntimeException('DEV TEST ERROR');
-			});
+			$router->get(
+				'/_test/layout-error',
+				fn() =>
+				view('test_layout_error')
+			);
 		}
 
-		$router->get('/_test/warning', function () {
-			echo $undefinedVariable;
-		});
-
 		/*
-		|--------------------------------------------------------------------------
-		| Öffentliche & App-Routen
-		|--------------------------------------------------------------------------
-		*/
+        |--------------------------------------------------------------------------
+        | Application Routes
+        |--------------------------------------------------------------------------
+        */
 		$router->get('/', fn() => 'Startseite');
 
 		$router->get('/test', 'DemoController@index');
@@ -105,10 +131,10 @@ class Kernel
 		);
 
 		/*
-		|--------------------------------------------------------------------------
-		| Theme Handling
-		|--------------------------------------------------------------------------
-		*/
+        |--------------------------------------------------------------------------
+        | Theme Handling
+        |--------------------------------------------------------------------------
+        */
 		$router->get('/themes/{name:str}', function (string $name) {
 			if (\FW\Theme\Theme::set($name)) {
 				return redirect('/')
@@ -124,36 +150,30 @@ class Kernel
 		});
 
 		/*
-		|--------------------------------------------------------------------------
-		| Error Test (bewusst)
-		|--------------------------------------------------------------------------
-		*/
+        |--------------------------------------------------------------------------
+        | Error Test
+        |--------------------------------------------------------------------------
+        */
 		$router->get('/errtest', function () {
 			throw new \RuntimeException('Testfehler!');
 		});
 
 		/*
-		|--------------------------------------------------------------------------
-		| Routing Match
-		|--------------------------------------------------------------------------
-		*/
+        |--------------------------------------------------------------------------
+        | Routing Match
+        |--------------------------------------------------------------------------
+        */
 		$match = $router->match($this->req);
 
 		if (isset($match['error'])) {
 
 			if ($match['error'] === 404) {
-				(new Response(
-					view('errors/404_styled'),
-					404
-				))->send();
+				ErrorController::error404()->send();
 				return;
 			}
 
 			if ($match['error'] === 405) {
-				(new Response(
-					view('errors/405_styled'),
-					405
-				))->send();
+				ErrorController::error405()->send();
 				return;
 			}
 		}
@@ -162,12 +182,11 @@ class Kernel
 		$params = $match['params'];
 
 		/*
-		|--------------------------------------------------------------------------
-		| Middleware Pipeline (Maintenance IMMER zuerst)
-		|--------------------------------------------------------------------------
-		*/
+        |--------------------------------------------------------------------------
+        | Middleware Pipeline (Route-Middleware)
+        |--------------------------------------------------------------------------
+        */
 		$middlewares = $route->middlewares ?? [];
-		array_unshift($middlewares, 'maintenance');
 
 		$response = MiddlewarePipeline::run(
 			$middlewares,
