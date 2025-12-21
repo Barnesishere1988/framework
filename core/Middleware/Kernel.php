@@ -96,6 +96,10 @@ class Kernel
 		if ((Config::get('app')['env'] ?? 'prod') === 'dev') {
 
 			$router->get('/_debug/logs', function () {
+				if ((Config::get('app')['env'] ?? 'prod') !== 'dev') {
+					return new Response('Zugriff verweigert', 403);
+				}
+
 				$logs = LogViewer::read(300);
 				return view('debug/logs', ['logs' => $logs]);
 			});
@@ -157,6 +161,21 @@ class Kernel
 		$router->get('/errtest', function () {
 			throw new \RuntimeException('Testfehler!');
 		});
+		$router->get('/_test/error/runtime', function () {
+			throw new \RuntimeException('FAKE RuntimeException Test');
+		});
+		$router->get('/_test/error/php', function () {
+			echo $undefinedVariable; // erzeugt PHP Notice → ErrorException
+		});
+		$router->get('/_test/error/view', function () {
+			return view('this_view_does_not_exist');
+		});
+		$router->get(
+			'/_test/error/middleware',
+			fn() => 'SHOULD NEVER SHOW'
+		)->middleware('does_not_exist');
+
+
 
 		/*
         |--------------------------------------------------------------------------

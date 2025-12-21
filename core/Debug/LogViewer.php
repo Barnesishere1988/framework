@@ -1,30 +1,27 @@
 <?php
-namespace FW\Debug;
 
-use FW\Config\Config;
+namespace FW\Debug;
 
 class LogViewer
 {
 	public static function read(int $lines = 200): array
 	{
-		$dir = __DIR__ . '/../../storage/logs';
-		if (!is_dir($dir)) {
-			return ['error' => 'Log-Verzeichnis nicht gefunden'];
+		$file = __DIR__ . '/../../storage/logs/error.log';
+
+		if (!file_exists($file)) {
+			return [];
 		}
 
-		$files = glob($dir . '/*.log');
-		if (!$files) {
-			return ['error' => 'Keine Logdateien vorhanden'];
+		$content = @file($file, FILE_IGNORE_NEW_LINES);
+
+		if ($content === false) {
+			return [];
 		}
 
-		rsort($files); // neueste zuerst
-		$file = $files[0];
-
-		$content = file($file, FILE_IGNORE_NEW_LINES);
-		if (!$content) {
-			return ['error' => 'Logdatei leer'];
-		}
-
-		return array_slice($content, -$lines);
+		return array_slice(
+			array_reverse($content),
+			0,
+			$lines
+		);
 	}
 }
