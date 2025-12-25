@@ -6,6 +6,28 @@ use Throwable;
 
 class Logger
 {
+	// Zukünftige Kanäle (NOCH NICHT GENUTZT)
+	protected static array $channels = [
+		'framework' => 'framework.log',
+		'error'			=> 'error.log',
+		// 'sql'		  => 'sql.log',
+		// 'routing'	=> 'routing.log',
+		// 'plugin'		=> 'plugin.log',
+	];
+
+	// Zukünftige Levels (NOCH NICHT GENUTZT)
+	protected static array $levels = [
+		'error',
+		'info',
+		'debug',
+	];
+
+	public static function channel(string $name): self
+	{
+		// Platzhalter für Phase 6+
+		return new self();
+	}
+
 	private static function logFile(string $name): string
 	{
 		return __DIR__ . '/../../storage/logs/' . $name;
