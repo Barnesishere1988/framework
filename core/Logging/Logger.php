@@ -6,69 +6,61 @@ use Throwable;
 
 class Logger
 {
-	// Zukünftige Kanäle (NOCH NICHT GENUTZT)
 	protected static array $channels = [
-		'framework' => 'framework.log',
-		'error'			=> 'error.log',
-		// 'sql'		  => 'sql.log',
-		// 'routing'	=> 'routing.log',
-		// 'plugin'		=> 'plugin.log',
+		'framework' => __DIR__ . '/../../storage/logs/framework.log',
+		'error'     => __DIR__ . '/../../storage/logs/error.log',
 	];
-
-	// Zukünftige Levels (NOCH NICHT GENUTZT)
-	protected static array $levels = [
-		'error',
-		'info',
-		'debug',
-	];
-
-	public static function channel(string $name): self
-	{
-		// Platzhalter für Phase 6+
-		return new self();
-	}
-
-	private static function logFile(string $name): string
-	{
-		return __DIR__ . '/../../storage/logs/' . $name;
-	}
-
-	private static function write(string $file, string $content): void
-	{
-		file_put_contents(
-			self::logFile($file),
-			$content . PHP_EOL,
-			FILE_APPEND | LOCK_EX
-		);
-	}
-
-	private static function format(Throwable $e): string
-	{
-		$req = $_SERVER['REQUEST_METHOD'] . ' ' . ($_SERVER['REQUEST_URI'] ?? '-');
-
-		return sprintf(
-			"[%s] ERROR\nMessage: %s\nFile: %s\nLine: %d\nRequest: %s\nTrace:\n%s\n-------------------------------",
-			date('Y-m-d H:i:s'),
-			$e->getMessage(),
-			$e->getFile(),
-			$e->getLine(),
-			$req,
-			$e->getTraceAsString()
-		);
-	}
 
 	/**
-	 * Zentrale ERROR-Methode
-	 * -> schreibt bewusst in ZWEI Logs
+	 * Öffentlicher Error-Logger
 	 */
 	public static function error(Throwable $e): void
 	{
-		$entry = self::format($e);
+		$file = self::resolveLogFile($e);
 
-		// 1) Framweork-Gesamtlog
-		self::write('framweork.log', $entry);
+		self::write($file, [
+			'level'   => 'ERROR',
+			'message' => $e->getMessage(),
+			'file'    => $e->getFile(),
+			'line'    => $e->getLine(),
+			'trace'   => $e->getTraceAsString(),
+			'request' => ($_SERVER['REQUEST_METHOD'] ?? 'CLI')
+				. ' '
+				. ($_SERVER['REQUEST_URI'] ?? '')
+		]);
+	}
 
-		// 2) Reines Error-Log
-		self::write('error.log', $entry);
+	/**
+	 * Zentrale Entscheidung: wohin wird geloggt
+	 */
+	protected static function resolveLogFile(Throwable $e): string
+	{
+		// Phase 5: Alles was Throwable ist → error.log
+		return self::$channels['error'];
+	}
+
+	/**
+	 * Zentrale Schreibfunktion
+	 *
+	 * @param string $file
+	 * @param array<string,mixed> $data
+	 */
+	protected static function write(string $file, array $data): void
+	{
+		$timestamp = date('Y-m-d H:i:s');
+
+		$output  = '[' . $timestamp . '] ' . ($data['level'] ?? 'LOG') . PHP_EOL;
+		$output .= 'Message: ' . ($data['message'] ?? '') . PHP_EOL;
+		$output .= 'File: ' . ($data['file'] ?? '') . PHP_EOL;
+		$output .= 'Line: ' . ($data['line'] ?? '') . PHP_EOL;
+		$output .= 'Request: ' . ($data['request'] ?? '') . PHP_EOL;
+
+		if (!empty($data['trace'])) {
+			$output .= "Trace:\n" . $data['trace'] . PHP_EOL;
+		}
+
+		$output .= str_repeat('-', 30) . PHP_EOL;
+
+		file_put_contents($file, $output, FILE_APPEND | LOCK_EX);
 	}
 }
