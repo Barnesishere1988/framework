@@ -162,7 +162,7 @@ class Kernel
 			throw new \RuntimeException('Testfehler!');
 		});
 		$router->get('/_test/error/runtime', function () {
-			throw new \RuntimeException('FAKE RuntimeException Test');
+			throw new \RuntimeException('Phase 6.1 Test');
 		});
 		$router->get('/_test/error/php', function () {
 			echo $undefinedVariable; // erzeugt PHP Notice → ErrorException

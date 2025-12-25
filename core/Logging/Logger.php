@@ -9,6 +9,11 @@ class Logger
 	protected static array $channels = [
 		'framework' => __DIR__ . '/../../storage/logs/framework.log',
 		'error'     => __DIR__ . '/../../storage/logs/error.log',
+
+		// Phase 6 vorbereitet
+		'sql'				=> __DIR__ . '/../../storage/logs/sql.log',
+		'plugin'		=> __DIR__ . '/../../storage/logs/plugin.log',
+		'routing'		=> __DIR__ . '/../../storage/logs/routing.log',
 	];
 
 	/**
