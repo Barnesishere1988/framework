@@ -11,6 +11,7 @@ use FW\Config\Config;
 use FW\Debug\LogViewer;
 use FW\Maintenance\Maintenance;
 use FW\Controller\ErrorController;
+use FW\Routing\Source\FileRouteSource;
 
 class Kernel
 {
@@ -57,7 +58,8 @@ class Kernel
         | Router Setup
         |--------------------------------------------------------------------------
         */
-		$router = new Router();
+		$source = new FileRouteSource();
+		$router = new Router($source);
 
 		/*
         |--------------------------------------------------------------------------
