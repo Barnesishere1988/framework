@@ -1,5 +1,8 @@
 <?php
+
 namespace FW\Plugins;
+
+use FW\Logging\LogRegistry;
 
 class PluginManager
 {
@@ -8,6 +11,12 @@ class PluginManager
 	public static function register(string $pluginName, string $path): void
 	{
 		self::$paths[$pluginName] = rtrim($path, '/');
+
+		LogRegistry::plugin()->log(
+			'plugin.register',
+			$pluginName,
+			['path' => $path]
+		);
 	}
 
 	public static function viewPaths(): array
