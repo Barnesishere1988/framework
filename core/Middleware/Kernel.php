@@ -11,6 +11,7 @@ use FW\Config\Config;
 use FW\Debug\LogViewer;
 use FW\Maintenance\Maintenance;
 use FW\Logging\Logger;
+use FW\App\App;
 
 class Kernel
 {
@@ -106,6 +107,12 @@ class Kernel
 
 		$router->get('/_test/error', function () {
 			throw new \RuntimeException('Error Log Test');
+		});
+
+		$router->get('/_test/sql', function () {
+			$db = App::get('db');
+			$db->fetchAll('SELECT 1');
+			return 'SQL OK';
 		});
 
 

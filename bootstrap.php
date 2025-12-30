@@ -13,6 +13,29 @@ use FW\Logging\Logger;
 
 Logger::init(__DIR__ . '/storage/logs');
 
+use FW\Database\Database;
+use FW\App\App;
+
+$dbConfig = Config::get('database');
+
+if ($dbConfig === null) {
+	throw new RuntimeException('DB-Config "database" nicht gefunden');
+}
+
+$dbConfig = $dbConfig['default'];
+
+$pdo = new PDO(
+	$dbConfig['dsn'],
+	$dbConfig['user'],
+	$dbConfig['pass'],
+	$dbConfig['options']
+);
+
+$db = new Database($pdo);
+
+// Hier der entscheidende Schritt
+App::set('db', $db);
+
 $theme = Config::get('theme')['active'];
 AssetPublisher::publish($theme);
 

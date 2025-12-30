@@ -3,3 +3,4 @@
 /config/maintenance.json
 /config/security.php
 /storage/maintenance.flag
+/config/database.php
