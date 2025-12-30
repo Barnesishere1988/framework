@@ -10,6 +10,7 @@ use FW\Routing\Http\Request;
 use FW\Config\Config;
 use FW\Debug\LogViewer;
 use FW\Maintenance\Maintenance;
+use FW\Logging\Logger;
 
 class Kernel
 {
@@ -74,6 +75,39 @@ class Kernel
 		$router->get('/errtest', function () {
 			throw new \RuntimeException('Testfehler');
 		});
+		/*
+        |--------------------------------------------------------------------------
+        | TESTS
+        |--------------------------------------------------------------------------
+        */
+		$router->get('/_test/log-framework', function () {
+			Logger::channel('framework', [
+				'message' => 'Framework Channel Test',
+			]);
+
+			return 'OK';
+		});
+
+		$router->get('/_test/log-routing', function () {
+			Logger::channel('routing', [
+				'message' => 'Routing Channel Test',
+			]);
+
+			return 'OK';
+		});
+
+		$router->get('/_test/log-unknown', function () {
+			Logger::channel('doesnotexist', [
+				'message' => 'Fallback Test',
+			]);
+
+			return 'OK';
+		});
+
+		$router->get('/_test/error', function () {
+			throw new \RuntimeException('Error Log Test');
+		});
+
 
 		/*
         |--------------------------------------------------------------------------
