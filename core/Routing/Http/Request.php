@@ -87,4 +87,14 @@ class Request
 
 		return $path ?: '/';
 	}
+
+	public function getMethod(): string
+	{
+		return $this->method;
+	}
+
+	public function getPath(): string
+	{
+		return $this->uri;
+	}
 }
