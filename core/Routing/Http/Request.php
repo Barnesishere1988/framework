@@ -77,4 +77,14 @@ class Request
 		return str_contains($accept, 'application/json')
 			|| $xhr === 'XMLHttpRequest';
 	}
+
+	public function path(): string
+	{
+		$uri = $this->uri ?? '/';
+
+		// Query-String entfernen
+		$path = parse_url($uri, PHP_URL_PATH);
+
+		return $path ?: '/';
+	}
 }
