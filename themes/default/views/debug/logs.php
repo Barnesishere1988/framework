@@ -8,7 +8,7 @@
 		Typ:
 		<select name="type">
 			<?php
-			$types = ['all', 'framework', 'error', 'sql', 'plugin', 'routing'];
+			$types = ['all', 'framework', 'error', 'sql', 'plugin', 'routing', 'slow-request', 'slow-sql'];
 			foreach ($types as $t):
 			?>
 				<option value="<?= $t ?>" <?= ($type ?? 'all') === $t ? 'selected' : '' ?>>

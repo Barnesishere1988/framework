@@ -56,11 +56,33 @@ class Logger
 		$file = self::$logDir . '/' . strtolower($channel) . '.log';
 
 		$entry  = strtoupper($channel) . PHP_EOL;
+
 		foreach ($data as $k => $v) {
+
+			// 🔧 WERT NORMALISIEREN
+			if (is_array($v)) {
+				$v = json_encode(
+					$v,
+					JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+				);
+			} elseif (is_object($v)) {
+				// z. B. Closure, Exception, DTO
+				if ($v instanceof \Throwable) {
+					$v = $v->getMessage();
+				} else {
+					$v = get_class($v);
+				}
+			} elseif (is_bool($v)) {
+				$v = $v ? 'true' : 'false';
+			} elseif ($v === null) {
+				$v = 'null';
+			}
+
 			$entry .= ucfirst($k) . ': ' . $v . PHP_EOL;
 		}
+
 		$entry .= str_repeat('-', 30) . PHP_EOL;
 
-		file_put_contents($file, $entry, FILE_APPEND);
+		file_put_contents($file, $entry, FILE_APPEND | LOCK_EX);
 	}
 }

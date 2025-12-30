@@ -11,6 +11,7 @@ use FW\Logging\Logger;
 use FW\Config\Config;
 use FW\Debug\LogViewer;
 use FW\Maintenance\Maintenance;
+use FW\App\App;
 
 class Kernel
 {
@@ -85,6 +86,15 @@ class Kernel
 
 		$router->get('/errtest', function () {
 			throw new \RuntimeException('Testfehler');
+		});
+		$router->get('/_test/slow', function () {
+			usleep(300_000); // 300 ms
+			return 'SLOW';
+		});
+		$router->get('/_test/db-slow', function () {
+
+			App::get('db')->query('SELECT SLEEP(0.2)');
+			return 'DB-SLOW';
 		});
 
 		/*
@@ -173,6 +183,16 @@ class Kernel
 			'path'   => $this->req->getPath(),
 			'time'   => $totalTime . 'ms',
 		]);
+
+		$perf = Config::get('performance');
+
+		if ($totalTime >= ($perf['slow_request_ms'] ?? 200)) {
+			Logger::channel('slow-request', [
+				'method'	=> $this->req->getMethod(),
+				'path'		=> $this->req->getPath(),
+				'time'		=> $totalTime . 'ms',
+			]);
+		}
 
 		$response->send();
 	}

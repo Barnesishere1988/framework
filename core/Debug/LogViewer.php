@@ -46,6 +46,12 @@ class LogViewer
 			case 'routing':
 				$files[] = $base . 'routing.log';
 				break;
+			case 'slow-sql':
+				$files[] = $base . 'slow-sql.log';
+				break;
+			case 'slow-request':
+				$files[] = $base . 'slow-request.log';
+				break;
 			case 'all':
 			default:
 				$files[] = $base . 'framework.log';

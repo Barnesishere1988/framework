@@ -4,6 +4,7 @@ namespace FW\Database;
 
 use PDO;
 use PDOStatement;
+use FW\Config\Config;
 use FW\Logging\Logger;
 
 class Database
@@ -32,6 +33,16 @@ class Database
 			'params'	=> json_encode($params, JSON_UNESCAPED_UNICODE),
 			'time_ms'	=> $duration,
 		]);
+
+		$perf = Config::get('performance');
+
+		if ($duration >= ($perf['slow_sql_ms'] ?? 100)) {
+			Logger::channel('slow-sql', [
+				'query'		=> $sql,
+				'params'	=> $params,
+				'time_ms'	=> $duration,
+			]);
+		}
 
 		return $stmt;
 	}
