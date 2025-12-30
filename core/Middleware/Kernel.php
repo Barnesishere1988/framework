@@ -37,9 +37,12 @@ class Kernel
 				return 'Zugriff verweigert';
 			}
 
-			$logs = LogViewer::read(300);
+			$type = $_GET['type'] ?? 'all';
+
+			$logs = LogViewer::readByType($type, 300);
 			return view('debug/logs', [
 				'logs' => $logs,
+				'type' => $type,
 			]);
 		});
 

@@ -7,12 +7,14 @@
 	<label>
 		Typ:
 		<select name="type">
-			<option value="all">Alle</option>
-			<option value="framework">Framework</option>
-			<option value="error">Error</option>
-			<option value="sql">SQL</option>
-			<option value="plugin">Plugin</option>
-			<option value="routing">Routing</option>
+			<?php
+			$types = ['all', 'framework', 'error', 'sql', 'plugin', 'routing'];
+			foreach ($types as $t):
+			?>
+				<option value="<?= $t ?>" <?= ($type ?? 'all') === $t ? 'selected' : '' ?>>
+					<?= $t ?>
+				</option>
+			<?php endforeach; ?>
 		</select>
 	</label>
 
